@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -44,6 +45,7 @@ namespace API_classes
         }
     }
 
+    [DataContractAttribute]
     public class Job
     {
         public uint localID;

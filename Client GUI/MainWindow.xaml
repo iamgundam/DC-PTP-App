@@ -9,7 +9,7 @@
     <Grid>
         <TextBox Name="CodeBox" HorizontalAlignment="Left" Height="320" Margin="10,53,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="419"/>
         <Label Content="Type Python code" HorizontalAlignment="Left" Margin="10,27,0,0" VerticalAlignment="Top" Width="419"/>
-        <Button Name="SubmitButton" Content="Submit" HorizontalAlignment="Left" Margin="354,378,0,0" VerticalAlignment="Top" Width="75"/>
+        <Button Name="SubmitButton" Content="Submit" HorizontalAlignment="Left" Margin="354,378,0,0" VerticalAlignment="Top" Width="75" Click="SubmitButton_Click"/>
         
         <Label Content="External job status: " HorizontalAlignment="Left" Margin="462,53,0,0" VerticalAlignment="Top" Width="120" Height="29"/>
         <Label Content="External jobs done: " HorizontalAlignment="Left" Margin="462,82,0,0" VerticalAlignment="Top" Width="120" Height="29"/>
