@@ -1,0 +1,23 @@
+﻿<Window x:Class="Client_GUI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Client_GUI"
+        mc:Ignorable="d"
+        Title="PTP Python" Height="450" Width="800">
+    <Grid>
+        <TextBox Name="CodeBox" HorizontalAlignment="Left" Height="320" Margin="10,53,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="419"/>
+        <Label Content="Type Python code" HorizontalAlignment="Left" Margin="10,27,0,0" VerticalAlignment="Top" Width="419"/>
+        <Button Name="SubmitButton" Content="Submit" HorizontalAlignment="Left" Margin="354,378,0,0" VerticalAlignment="Top" Width="75"/>
+        
+        <Label Content="External job status: " HorizontalAlignment="Left" Margin="462,53,0,0" VerticalAlignment="Top" Width="120" Height="29"/>
+        <Label Content="External jobs done: " HorizontalAlignment="Left" Margin="462,82,0,0" VerticalAlignment="Top" Width="120" Height="29"/>
+        <Label Name="JobStatusBox" Content="Idle" HorizontalAlignment="Left" Margin="664,53,0,0" VerticalAlignment="Top" Width="118" Height="29"/>
+        <Label Name="WorkedJobsBox" Content="0" HorizontalAlignment="Left" Margin="664,82,0,0" VerticalAlignment="Top" Width="118" Height="29"/>
+        
+        <TextBox Name="ResultsBox" HorizontalAlignment="Left" Height="58" Margin="462,315,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="320"/>
+        <Label Content="Results" HorizontalAlignment="Left" Margin="462,287,0,0" VerticalAlignment="Top" Width="320"/>
+
+    </Grid>
+</Window>
