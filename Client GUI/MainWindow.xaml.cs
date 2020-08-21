@@ -39,6 +39,11 @@ namespace Client_GUI
     public partial class MainWindow : Window
     {
         private uint port;
+        private string solution;
+        private Server serverWorker;
+        private Networking worker;
+        private Thread serverThread, networkingThread;
+        private JobServerInterface clientServer;
 
         public MainWindow()
         {
@@ -47,37 +52,52 @@ namespace Client_GUI
             port = 6000;
 
             //Start server thread, lock 'port' uint for initial setting.
-            Server serverWorker = new Server();
-            Thread serverThread = new Thread(() => serverWorker.DoWork(ref port));
+            serverWorker = new Server();
+            serverThread = new Thread(() => serverWorker.DoWork(ref port));
             serverThread.Start();
             
             //Loop while port is not set
             while(!serverWorker.isPortSet()){ }
 
             //Start networking thread
-            Networking worker = new Networking();
-            Thread networkingThread = new Thread(() => worker.DoWork(port));
+            worker = new Networking();
+            networkingThread = new Thread(() => worker.DoWork(port, ref solution));
             networkingThread.Start();
 
-            Console.WriteLine(String.Concat("CLIENT PORT: ", port.ToString()));
-
-            /*
-            //Cleanup
-            serverWorker.Stop();
-            serverThread.Join();
-
-            worker.Stop();
-            networkingThread.Join();*/
+            //Connect to own client server
+            NetTcpBinding tcp = new NetTcpBinding();
+            string URL = String.Concat("net.tcp://localhost:", port.ToString(), "/ClientServer");
+            ChannelFactory<JobServerInterface> jobServerFactory;
+            jobServerFactory = new ChannelFactory<JobServerInterface>(tcp, URL);
+            clientServer = jobServerFactory.CreateChannel();
         }
 
         private void SubmitButton_Click(object sender, RoutedEventArgs e)
         {
-            string code = CodeBox.Text;
-            Console.WriteLine(String.Concat("CLIENT PORT: ", port.ToString()));
+            //Loop while port is not set
+            while (!serverWorker.isPortSet()) { }
 
+            string code = CodeBox.Text;
+            Console.WriteLine(code);
+
+            clientServer.SubmitJob(code);
         }
 
-        
+        private void Window_Closing(object sender, CancelEventArgs e)
+        {
+            //Connect to web server and remove self from client list
+            RestClient webServer = new RestClient("https://localhost:44370/");
+            RestRequest req = new RestRequest("api/clients/remove");
+            req.AddJsonBody(new ClientData("127.0.0.1", port));
+            IRestResponse resp = webServer.Delete(req);
+
+            //Cleanup threads
+            serverWorker.Stop();
+            serverThread.Join();
+
+            worker.Stop();
+            networkingThread.Join();
+        }
     }//end class
 
     public class Networking
@@ -85,7 +105,7 @@ namespace Client_GUI
         private volatile bool shouldStop; //'volatile' as multiple threads may access this bool
         private List<ClientData> clients;
 
-        public void DoWork(uint clientPort)
+        public void DoWork(uint clientPort, ref string solution)
         {
             RestClient webServer;
             shouldStop = false;
@@ -117,36 +137,52 @@ namespace Client_GUI
                         //Ignore the current client if it is the server's owning client
                         if(curr.port != clientPort)
                         {
-                            //Connect to that client's server
-                            NetTcpBinding tcp = new NetTcpBinding();
-                            string URL = String.Concat("net.tcp://localhost:", curr.port.ToString(), "/ClientServer");
-                            ChannelFactory<JobServerInterface> jobServerFactory;
-                            jobServerFactory = new ChannelFactory<JobServerInterface>(tcp, URL);
-                            JobServerInterface clientServer = jobServerFactory.CreateChannel();
-
-                            /*Do job if found, then stop searching.
-                            Job foundJob = clientServer.GetJob();
-                            if (foundJob != null)
+                            try
                             {
-                                //do job
-                                clientServer.SubmitSolution(foundJob.localID, "testSolution");
+                                //Connect to that client's server
+                                NetTcpBinding tcp = new NetTcpBinding();
+                                string URL = String.Concat("net.tcp://localhost:", curr.port.ToString(), "/ClientServer");
+                                ChannelFactory<JobServerInterface> jobServerFactory;
+                                jobServerFactory = new ChannelFactory<JobServerInterface>(tcp, URL);
+                                JobServerInterface clientServer = jobServerFactory.CreateChannel();
 
-                                keepSearching = false;
-                            }*/
+                                //Check list of available jobs
+                                List<Job> jobs = clientServer.GetJobs();
 
-                            //Check list of available jobs
-                            List<Job> jobs = clientServer.GetJobs();
-                            Job foundJob = jobs.Find(x => x.solution == null);
+                                //Do job if found, then stop searching.
+                                Job foundJob = jobs.Find(x => x.solution == null);
+                                if (foundJob != null)
+                                {
+                                    //do job
+                                    clientServer.SubmitSolution(foundJob.localID, "testSolution");
 
-                            //Do job if found, then stop searching.
-                            if (foundJob != null)
-                            {
-                                //do job
-                                clientServer.SubmitSolution(foundJob.localID, "testSolution");
+                                    keepSearching = false;
+                                }
 
-                                keepSearching = false;
+
+                                /*DEBUG: Attempt to do all jobs.
+                                for(int ii=0; ii < jobs.Count; ii++)
+                                {
+                                    Job foundJob = jobs.ElementAt(ii);
+
+                                    //Do job if found, then stop searching.
+                                    if (foundJob != null && foundJob.solution == null)
+                                    {
+                                        //do job
+                                        clientServer.SubmitSolution(foundJob.localID, "testSolution");
+
+                                        keepSearching = false;
+                                    }
+                                }
+                                */
+
                             }
-                        }
+                            catch(EndpointNotFoundException e)
+                            {
+                                //Server may have been closed unexpectedly, skip this client.
+                            }//end try catch
+
+                        }//end if
 
                         //Progress client enumerator
                         enumerator.MoveNext();
@@ -283,16 +319,22 @@ namespace Client_GUI
     internal class JobServer : JobServerInterface
     {
         private static JobServer instance;
-        private List<Job> jobs;
+        private static List<Job> jobs;
         private uint localJobIdIncrement; //Incremented by 1, starting from 0, to identify jobs.
         private uint logCount;
+        private Mutex jobIdMutex;
 
         private JobServer()
         {
             jobs = new List<Job>();
-            localJobIdIncrement = 1;
+            localJobIdIncrement = 0;
+            jobIdMutex = new Mutex();
 
+            /* DEBUG Test jobs
             jobs.Add(new Job(0, "test", null));
+            jobs.Add(new Job(1, "test2", null));
+            jobs.Add(new Job(2, "test33", null));
+            */
         }
 
         public static JobServer get()
@@ -307,7 +349,7 @@ namespace Client_GUI
 
         public List<Job> GetJobs()
         {
-            Log("Job list retrieved.");
+            //Log(String.Concat("Job list retrieved.", jobs.ToString()));
             List<Job> output = jobs;
             return output;
         }
@@ -319,16 +361,16 @@ namespace Client_GUI
         }*/
 
         //Only the server's owning client will submit jobs using this method
-        [MethodImpl(MethodImplOptions.Synchronized)]
         public bool SubmitJob(string job)
         {
             bool success = false;
-            Job newJob = new Job(localJobIdIncrement, job, null);
-            jobs.Add(newJob);
+            jobs.Add(new Job(localJobIdIncrement, job, null));
 
+            jobIdMutex.WaitOne();
+            Log(String.Concat("Job posted by GUI: ", job, "ID ", localJobIdIncrement));
             localJobIdIncrement++;
+            jobIdMutex.ReleaseMutex();
 
-            Log("Job posted by GUI.");
             return success;
         }
 
@@ -338,14 +380,19 @@ namespace Client_GUI
         {
             bool accepted = false;
             Job solved = jobs.Find(x => x.localID == id);
-            if (solved.solution == null)
+            if (solved != null && solved.solution == null)
             {
                 solved.solution = sol;
                 accepted = true;
-                jobs.Remove(solved);
+
+                Log(String.Concat("Solution submitted by another client. Solution was: ", sol, " for ID ", id));
+            }
+            else
+            {
+                Log(String.Concat("Solution submission failed for", sol, " for ID ", id));
             }
 
-            Log(String.Concat("Solution submitted by another client. Solution was: ", sol));
+            
             return accepted;
         }
 

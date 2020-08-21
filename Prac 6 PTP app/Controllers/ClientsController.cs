@@ -56,7 +56,7 @@ namespace Prac_6_PTP_app.Controllers
                 db.removeClient(data.ipAddress, data.port);
                 resp = new HttpResponseMessage(HttpStatusCode.OK);
             }
-            catch (ClientAlreadyExistsException e)
+            catch (ClientNotFoundException e)
             {
                 resp = new HttpResponseMessage(HttpStatusCode.Forbidden);
             }

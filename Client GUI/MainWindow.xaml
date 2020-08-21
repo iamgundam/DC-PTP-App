@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Client_GUI"
         mc:Ignorable="d"
-        Title="PTP Python" Height="450" Width="800">
+        Title="PTP Python" Height="450" Width="800"
+        Closing="Window_Closing">
     <Grid>
         <TextBox Name="CodeBox" HorizontalAlignment="Left" Height="320" Margin="10,53,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="419"/>
         <Label Content="Type Python code" HorizontalAlignment="Left" Margin="10,27,0,0" VerticalAlignment="Top" Width="419"/>

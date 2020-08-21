@@ -48,8 +48,13 @@ namespace API_classes
     [DataContractAttribute]
     public class Job
     {
+        [DataMember]
         public uint localID;
+
+        [DataMember]
         public string pythonCode;
+
+        [DataMember]
         public string solution;
 
         public Job(uint id, string code, string sol)
@@ -57,6 +62,21 @@ namespace API_classes
             localID = id;
             pythonCode = code;
             solution = sol;
+        }
+
+        public bool Equals(Job other)
+        {
+            bool isEqual = false;
+
+            if (localID == other.localID)
+            {
+                if (String.Equals(pythonCode, other.pythonCode))
+                {
+                    isEqual = true;
+                }
+            }
+
+            return isEqual;
         }
     }
 }
